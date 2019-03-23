@@ -1,62 +1,49 @@
 package main
 
 import (
-	"bufio"
+	"crypto/tls"
 	"fmt"
-	"log"
-	"net"
-	"net/textproto"
+
+	irc "github.com/thoj/go-ircevent"
 )
 
-type Bot struct {
-	server        string
-	port          string
-	nick          string
-	user          string
-	channel       string
-	pass          string
-	pread, pwrite chan string
-	conn          net.Conn
-}
-
-func NewBot() *Bot {
-	return &Bot{
-		server:  "irc.freenode.net",
-		port:    "6667",
-		nick:    "stansbot1212",
-		channel: "#somethingfortesting",
-		pass:    "",
-		conn:    nil,
-		user:    "superbot1212",
-	}
-}
-
-func (b *Bot) Connect() (conn net.Conn, err error) {
-	conn, err = net.Dial("tcp", b.server+":"+b.port)
-	if err != nil {
-		log.Fatal("unable to connect to irc", err)
-	}
-
-	b.conn = conn
-	log.Printf("connected to irc server")
-	return b.conn, nil
-}
+const channel = "#go-eventirc-test"
+const serverssl = "irc.freenode.net:7000"
 
 func main() {
-	ircbot := NewBot()
-	conn, _ := ircbot.Connect()
-	fmt.Fprintf(conn, "USER %s 8 * : %s\r\n", ircbot.nick, ircbot.nick)
-	fmt.Fprintf(conn, "NICK %s\r\n", ircbot.nick)
-	fmt.Fprintf(conn, "JOIN %s\r\n", ircbot.channel)
-	defer conn.Close()
-
-	reader := bufio.NewReader(conn)
-	tp := textproto.NewReader(reader)
-	for {
-		line, err := tp.ReadLine()
-		if err != nil {
-			break
-		}
-		fmt.Printf("%s\n", line)
+	ircnick1 := "blatiblat"
+	irccon := irc.IRC(ircnick1, "IRCTestSSL")
+	irccon.VerboseCallbackHandler = true
+	irccon.Debug = true
+	irccon.UseTLS = true
+	irccon.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	irccon.AddCallback("001", func(e *irc.Event) { irccon.Join(channel) })
+	irccon.AddCallback("366", func(e *irc.Event) {})
+	err := irccon.Connect(serverssl)
+	if err != nil {
+		fmt.Printf("Err %s", err)
+		return
 	}
+	irccon.Loop()
 }
+
+// package main
+
+// import (
+// 	"fyne.io/fyne/app"
+// 	"fyne.io/fyne/widget"
+// )
+
+// func main() {
+// 	app := app.New()
+
+// 	w := app.NewWindow("Hello")
+// 	w.SetContent(widget.NewVBox(
+// 		widget.NewLabel("Hello Fyne!"),
+// 		widget.NewButton("Quit", func() {
+// 			app.Quit()
+// 		}),
+// 	))
+
+// 	w.ShowAndRun()
+// }
